@@ -302,26 +302,38 @@
 <footer>Torre de Hanói · Projeto Web Interativo · UTFPR Campus Londrina · 2025</footer>
 
 <script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const container = document.getElementById('game-canvas');
+// ====== Referências de desenho ======
+const canvas = document.getElementById('canvas');      // elemento <canvas> onde o jogo é desenhado
+const ctx = canvas.getContext('2d');                   // contexto 2D usado para todos os desenhos
+const container = document.getElementById('game-canvas'); // div que define o tamanho disponível (responsivo)
 
+// Paleta de cores dos discos (1 cor por tamanho de disco; reaproveitada se houver mais discos que cores)
 const DISK_COLORS = [
   '#e84a4a','#e8844a','#e8c84a','#84e84a','#4ae8c8','#4a84e8','#c84ae8','#e84a84'
 ];
 
-let numDisks = 3;
-let pegs = [[], [], []];
-let moves = 0;
-let minMoves = 7;
-let selectedPeg = -1;
-let gameOver = false;
-let won = false;
+// ====== Estado do jogo ======
+let numDisks = 3;            // quantidade de discos da partida atual (vem do <select>)
+let pegs = [[], [], []];     // os 3 pinos (A,B,C); cada pino é uma pilha: base = índice 0, topo = último
+let moves = 0;               // movimentos já realizados pelo jogador
+let minMoves = 7;            // mínimo teórico de movimentos = 2^numDisks - 1 (solução ótima)
+let selectedPeg = -1;        // pino de origem selecionado (-1 = nenhum disco "na mão")
+let gameOver = false;        // true quando o jogador perdeu (gastou o mínimo sem resolver)
+let won = false;             // true quando todos os discos chegaram ao pino C
 
+/**
+ * Inicia/reinicia a partida do zero.
+ * Lê o nº de discos do <select>, recalcula o mínimo de movimentos,
+ * empilha todos os discos no pino A (do maior para o menor), zera
+ * contadores/seleção/flags, atualiza o painel e redesenha.
+ * Chamada no carregamento, no botão "Novo jogo", ao trocar o nº de
+ * discos e ao fechar o overlay.
+ */
 function initGame() {
   numDisks = parseInt(document.getElementById('disk-count').value);
-  minMoves = Math.pow(2, numDisks) - 1;
+  minMoves = Math.pow(2, numDisks) - 1;          // solução ótima da Torre de Hanói
   pegs = [[], [], []];
+  // Empilha do maior (numDisks) ao menor (1): o maior fica na base do pino A
   for (let i = numDisks; i >= 1; i--) pegs[0].push(i);
   moves = 0;
   selectedPeg = -1;
@@ -332,6 +344,11 @@ function initGame() {
   document.getElementById('overlay').classList.remove('show');
 }
 
+/**
+ * Atualiza o painel de números na tela: movimentos feitos, mínimo
+ * teórico e quantos movimentos ainda "restam" (mínimo - feitos,
+ * nunca negativo).
+ */
 function updateStats() {
   document.getElementById('moves-display').textContent = moves;
   document.getElementById('min-display').textContent = minMoves;
@@ -339,24 +356,45 @@ function updateStats() {
   document.getElementById('remaining-display').textContent = rem >= 0 ? rem : 0;
 }
 
+/**
+ * Ajusta a resolução interna do canvas ao tamanho atual do contêiner
+ * e redesenha. Mantém o jogo nítido e responsivo (chamada no resize
+ * da janela e na inicialização).
+ */
 function resizeCanvas() {
   canvas.width = container.offsetWidth;
   canvas.height = container.offsetHeight;
   draw();
 }
 
+/**
+ * Utilitário de layout: retorna a coordenada X (em px) do centro do
+ * pino informado (0=A, 1=B, 2=C), dividindo a largura em 3 seções.
+ */
 function getPegX(pegIndex) {
   const w = canvas.width;
   const section = w / 3;
   return section * pegIndex + section / 2;
 }
 
+/**
+ * Utilitário de layout: calcula a largura em px de um disco conforme
+ * seu tamanho, interpolando linearmente entre uma largura mínima e
+ * máxima — discos maiores ficam visivelmente mais largos.
+ * (numDisks - 1 || 1) evita divisão por zero quando há 1 disco só.
+ */
 function getDiskWidth(diskSize) {
   const maxW = canvas.width / 4.2;
   const minW = maxW * 0.28;
   return minW + (diskSize - 1) * ((maxW - minW) / (numDisks - 1 || 1));
 }
 
+/**
+ * Renderiza todo o tabuleiro do zero (o "motor gráfico"): para cada
+ * pino desenha o realce de seleção, a base, a haste, a letra (A/B/C)
+ * e a pilha de discos (com brilho, contorno no disco selecionado e o
+ * número do disco). Chamada sempre que o estado muda.
+ */
 function draw() {
   const W = canvas.width;
   const H = canvas.height;
@@ -438,9 +476,19 @@ function draw() {
   }
 }
 
+/**
+ * Lógica central de interação (clique no canvas).
+ * 1º clique: seleciona o pino de origem (se tiver disco).
+ * Clique no mesmo pino: cancela a seleção.
+ * Clique em outro pino: move o disco do topo se a regra de Hanói
+ * permitir (disco menor sobre maior); senão, anima "inválido".
+ * Após mover, checa vitória e a regra de Game Over.
+ */
 function handleClick(e) {
-  if (gameOver || won) return;
+  if (gameOver || won) return;            // ignora cliques após fim de jogo
 
+  // Converte a coordenada do clique (CSS) para a coordenada interna do
+  // canvas e descobre em qual das 3 seções (pino) o clique caiu.
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) * (canvas.width / rect.width);
   const section = canvas.width / 3;
@@ -464,6 +512,8 @@ function handleClick(e) {
     const toPeg = pegs[clickedPeg];
     const diskToMove = fromPeg[fromPeg.length - 1];
 
+    // Regra da Torre de Hanói: só pode soltar em pino vazio ou sobre
+    // um disco MAIOR que o que está sendo movido.
     if (toPeg.length === 0 || toPeg[toPeg.length - 1] > diskToMove) {
       toPeg.push(fromPeg.pop());
       moves++;
@@ -477,6 +527,8 @@ function handleClick(e) {
         return;
       }
 
+      // Regra de design: o jogo só aceita a solução ótima. Se gastou
+      // o nº mínimo de movimentos sem ter vencido, é Game Over.
       if (moves >= minMoves && !won) {
         gameOver = true;
         showOverlay(false);
@@ -488,6 +540,11 @@ function handleClick(e) {
   }
 }
 
+/**
+ * Feedback visual de jogada inválida: faz os discos do pino tremerem
+ * lateralmente por ~6 quadros (setInterval de 50ms) e, ao final,
+ * redesenha o tabuleiro normal.
+ */
 function shakeInvalid(pegIndex) {
   let count = 0;
   const original = getPegX(pegIndex);
@@ -516,10 +573,19 @@ function shakeInvalid(pegIndex) {
   }, 50);
 }
 
+/**
+ * Condição de vitória: true quando todos os discos estão empilhados
+ * no pino C (pegs[2]).
+ */
 function checkWin() {
   return pegs[2].length === numDisks;
 }
 
+/**
+ * Exibe o modal de fim de jogo.
+ * success = true  -> tela de vitória (movimentos x mínimo).
+ * success = false -> tela de Game Over (gastou o mínimo sem resolver).
+ */
 function showOverlay(success) {
   const overlay = document.getElementById('overlay');
   const title = document.getElementById('overlay-title');
@@ -538,17 +604,21 @@ function showOverlay(success) {
   overlay.classList.add('show');
 }
 
+/**
+ * Fecha o modal e recomeça o jogo (ligada ao botão "Jogar novamente").
+ */
 function closeOverlay() {
   initGame();
 }
 
-canvas.addEventListener('click', handleClick);
-document.getElementById('btn-restart').addEventListener('click', initGame);
-document.getElementById('disk-count').addEventListener('change', initGame);
-window.addEventListener('resize', resizeCanvas);
+// ====== Ligações de eventos e bootstrap ======
+canvas.addEventListener('click', handleClick);                               // clique no tabuleiro -> jogar
+document.getElementById('btn-restart').addEventListener('click', initGame);  // botão "Novo jogo"
+document.getElementById('disk-count').addEventListener('change', initGame);  // trocar nº de discos reinicia
+window.addEventListener('resize', resizeCanvas);                             // mantém o canvas responsivo
 
-resizeCanvas();
-initGame();
+resizeCanvas();  // dimensiona o canvas conforme o contêiner
+initGame();      // monta a partida inicial
 </script>
 </body>
 </html>
