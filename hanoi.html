@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torre de Hanói — UTFPR</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ede8;
+    --muted: #888880;
+    --accent: #e8c84a;
+    --accent2: #4ae8c8;
+    --danger: #e84a4a;
+    --success: #4ae888;
+    --peg: #3a3a44;
+    --base: #2a2a32;
+  }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 1.5rem 2rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .institution {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    line-height: 1.7;
+    letter-spacing: 0.03em;
+  }
+
+  .institution strong {
+    color: var(--accent);
+    display: block;
+    font-size: 12px;
+    margin-bottom: 2px;
+  }
+
+  .game-title {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .game-title span {
+    color: var(--accent);
+  }
+
+  .controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  select, button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  select:hover, button:hover {
+    border-color: rgba(255,255,255,0.2);
+    background: #25252e;
+  }
+
+  button.primary {
+    background: var(--accent);
+    color: #0d0d0f;
+    border-color: transparent;
+    font-weight: 700;
+  }
+
+  button.primary:hover {
+    background: #f0d060;
+  }
+
+  .stats {
+    display: flex;
+    gap: 2rem;
+    padding: 0.75rem 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-width: 40px;
+  }
+
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.accent2 { color: var(--accent2); }
+
+  .game-area {
+    flex: 1;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  #game-canvas {
+    width: 100%;
+    max-width: 860px;
+    height: 380px;
+    position: relative;
+    cursor: default;
+  }
+
+  .instructions {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-align: center;
+    margin-top: 1rem;
+    letter-spacing: 0.02em;
+  }
+
+  .instructions span {
+    color: var(--accent);
+  }
+
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .overlay.show { display: flex; }
+
+  .overlay-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 3rem;
+    max-width: 440px;
+    width: 90%;
+    text-align: center;
+  }
+
+  .overlay-card h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .overlay-card h2.success { color: var(--success); }
+  .overlay-card h2.gameover { color: var(--danger); }
+
+  .overlay-card p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .overlay-card p strong {
+    color: var(--text);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  footer {
+    padding: 1rem 2rem;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-align: center;
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="institution">
+    <strong>UTFPR — Universidade Tecnológica Federal do Paraná</strong>
+    Campus Londrina &nbsp;·&nbsp; Disciplina: Matemática Discreta &nbsp;·&nbsp;<br>
+    Professor: Alireza Mohebi Ashtiani &nbsp;·&nbsp; Discente: Francyelli Pereira Silva
+  </div>
+  <div class="game-title">Torre de <span>Hanói</span></div>
+</header>
+
+<div class="controls-bar">
+  <div class="control-group">
+    <label for="disk-count">Discos</label>
+    <select id="disk-count">
+      <option value="3" selected>3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="7">7</option>
+    </select>
+  </div>
+  <button class="primary" id="btn-restart">↺ Novo jogo</button>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <span class="stat-label">Movimentos</span>
+    <span class="stat-value accent2" id="moves-display">0</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Mínimo</span>
+    <span class="stat-value accent" id="min-display">7</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Restantes</span>
+    <span class="stat-value" id="remaining-display">7</span>
+  </div>
+</div>
+
+<div class="game-area">
+  <div id="game-canvas">
+    <canvas id="canvas"></canvas>
+  </div>
+  <p class="instructions">Clique para <span>selecionar</span> um disco · Clique novamente para <span>mover</span></p>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-msg"></p>
+    <button class="primary" onclick="closeOverlay()">Jogar novamente</button>
+  </div>
+</div>
+
+<footer>Torre de Hanói · Projeto Web Interativo · UTFPR Campus Londrina · 2025</footer>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const container = document.getElementById('game-canvas');
+
+const DISK_COLORS = [
+  '#e84a4a','#e8844a','#e8c84a','#84e84a','#4ae8c8','#4a84e8','#c84ae8','#e84a84'
+];
+
+let numDisks = 3;
+let pegs = [[], [], []];
+let moves = 0;
+let minMoves = 7;
+let selectedPeg = -1;
+let gameOver = false;
+let won = false;
+
+function initGame() {
+  numDisks = parseInt(document.getElementById('disk-count').value);
+  minMoves = Math.pow(2, numDisks) - 1;
+  pegs = [[], [], []];
+  for (let i = numDisks; i >= 1; i--) pegs[0].push(i);
+  moves = 0;
+  selectedPeg = -1;
+  gameOver = false;
+  won = false;
+  updateStats();
+  draw();
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function updateStats() {
+  document.getElementById('moves-display').textContent = moves;
+  document.getElementById('min-display').textContent = minMoves;
+  const rem = minMoves - moves;
+  document.getElementById('remaining-display').textContent = rem >= 0 ? rem : 0;
+}
+
+function resizeCanvas() {
+  canvas.width = container.offsetWidth;
+  canvas.height = container.offsetHeight;
+  draw();
+}
+
+function getPegX(pegIndex) {
+  const w = canvas.width;
+  const section = w / 3;
+  return section * pegIndex + section / 2;
+}
+
+function getDiskWidth(diskSize) {
+  const maxW = canvas.width / 4.2;
+  const minW = maxW * 0.28;
+  return minW + (diskSize - 1) * ((maxW - minW) / (numDisks - 1 || 1));
+}
+
+function draw() {
+  const W = canvas.width;
+  const H = canvas.height;
+  const DISK_H = Math.max(18, Math.min(32, (H * 0.55) / numDisks));
+  const BASE_Y = H - 40;
+  const PEG_H = H * 0.68;
+  const PEG_W = 10;
+
+  ctx.clearRect(0, 0, W, H);
+
+  for (let p = 0; p < 3; p++) {
+    const px = getPegX(p);
+
+    if (p === selectedPeg) {
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = '#e8c84a';
+      const section = W / 3;
+      ctx.fillRect(p * section + 4, 0, section - 8, H);
+      ctx.restore();
+    }
+
+    ctx.fillStyle = '#2a2a32';
+    ctx.beginPath();
+    ctx.roundRect(px - W * 0.14, BASE_Y, W * 0.28, 14, 4);
+    ctx.fill();
+
+    ctx.fillStyle = p === selectedPeg ? '#5a5a70' : '#3a3a44';
+    ctx.beginPath();
+    ctx.roundRect(px - PEG_W / 2, BASE_Y - PEG_H, PEG_W, PEG_H, 5);
+    ctx.fill();
+
+    const labels = ['A', 'B', 'C'];
+    ctx.fillStyle = p === selectedPeg ? '#e8c84a' : '#555560';
+    ctx.font = `600 13px 'Space Mono', monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(labels[p], px, BASE_Y + 26);
+
+    for (let d = 0; d < pegs[p].length; d++) {
+      const diskSize = pegs[p][d];
+      const dw = getDiskWidth(diskSize);
+      const dy = BASE_Y - (d + 1) * (DISK_H + 3);
+      const colorIdx = diskSize - 1;
+      const col = DISK_COLORS[colorIdx % DISK_COLORS.length];
+
+      ctx.save();
+      ctx.globalAlpha = (selectedPeg === p && d === pegs[p].length - 1) ? 1 : 0.92;
+
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.roundRect(px - dw / 2, dy, dw, DISK_H, DISK_H / 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.beginPath();
+      ctx.roundRect(px - dw / 2 + 2, dy + 2, dw - 4, DISK_H / 2 - 2, (DISK_H / 2) - 2);
+      ctx.fill();
+
+      if (selectedPeg === p && d === pegs[p].length - 1) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.roundRect(px - dw / 2 + 1, dy + 1, dw - 2, DISK_H - 2, DISK_H / 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+
+      if (DISK_H >= 20) {
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.font = `700 ${Math.max(10, DISK_H * 0.42)}px 'Space Mono', monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(diskSize, px, dy + DISK_H / 2);
+        ctx.textBaseline = 'alphabetic';
+      }
+    }
+  }
+}
+
+function handleClick(e) {
+  if (gameOver || won) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const section = canvas.width / 3;
+  const clickedPeg = Math.floor(x / section);
+
+  if (clickedPeg < 0 || clickedPeg > 2) return;
+
+  if (selectedPeg === -1) {
+    if (pegs[clickedPeg].length > 0) {
+      selectedPeg = clickedPeg;
+      draw();
+    }
+  } else {
+    if (clickedPeg === selectedPeg) {
+      selectedPeg = -1;
+      draw();
+      return;
+    }
+
+    const fromPeg = pegs[selectedPeg];
+    const toPeg = pegs[clickedPeg];
+    const diskToMove = fromPeg[fromPeg.length - 1];
+
+    if (toPeg.length === 0 || toPeg[toPeg.length - 1] > diskToMove) {
+      toPeg.push(fromPeg.pop());
+      moves++;
+      updateStats();
+      selectedPeg = -1;
+      draw();
+
+      if (checkWin()) {
+        won = true;
+        showOverlay(true);
+        return;
+      }
+
+      if (moves >= minMoves && !won) {
+        gameOver = true;
+        showOverlay(false);
+      }
+    } else {
+      shakeInvalid(clickedPeg);
+      selectedPeg = -1;
+    }
+  }
+}
+
+function shakeInvalid(pegIndex) {
+  let count = 0;
+  const original = getPegX(pegIndex);
+  const anim = setInterval(() => {
+    draw();
+    const offset = count % 2 === 0 ? 8 : -8;
+    const px = original + offset;
+    const W = canvas.width;
+    const H = canvas.height;
+    const DISK_H = Math.max(18, Math.min(32, (H * 0.55) / numDisks));
+    const BASE_Y = H - 40;
+
+    for (let d = 0; d < pegs[pegIndex].length; d++) {
+      const diskSize = pegs[pegIndex][d];
+      const dw = getDiskWidth(diskSize);
+      const dy = BASE_Y - (d + 1) * (DISK_H + 3);
+      const col = DISK_COLORS[(diskSize - 1) % DISK_COLORS.length];
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.roundRect(px - dw / 2, dy, dw, DISK_H, DISK_H / 2);
+      ctx.fill();
+    }
+
+    count++;
+    if (count >= 6) { clearInterval(anim); draw(); }
+  }, 50);
+}
+
+function checkWin() {
+  return pegs[2].length === numDisks;
+}
+
+function showOverlay(success) {
+  const overlay = document.getElementById('overlay');
+  const title = document.getElementById('overlay-title');
+  const msg = document.getElementById('overlay-msg');
+
+  if (success) {
+    title.textContent = '🏆 Parabéns!';
+    title.className = 'success';
+    msg.innerHTML = `Você completou a Torre de Hanói com <strong>${moves} movimentos</strong>!<br><br>O mínimo possível era <strong>${minMoves} movimentos</strong>.`;
+  } else {
+    title.textContent = 'Game Over';
+    title.className = 'gameover';
+    msg.innerHTML = `Você atingiu o número mínimo de movimentos sem completar a solução.<br><br><em>Game Over! Você atingiu o número mínimo de movimentos sem completar a solução.</em>`;
+  }
+
+  overlay.classList.add('show');
+}
+
+function closeOverlay() {
+  initGame();
+}
+
+canvas.addEventListener('click', handleClick);
+document.getElementById('btn-restart').addEventListener('click', initGame);
+document.getElementById('disk-count').addEventListener('change', initGame);
+window.addEventListener('resize', resizeCanvas);
+
+resizeCanvas();
+initGame();
+</script>
+</body>
+</html>
